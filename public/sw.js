@@ -6,16 +6,40 @@ const ASSETS_TO_CACHE = [
   '/assets/main.js',
 ];
 
+// Cache song data
+const SONG_DATA_CACHE = 'song-data-cache-v1';
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
+    Promise.all([
+      caches.open(CACHE_NAME)
+        .then((cache) => cache.addAll(ASSETS_TO_CACHE)),
+      caches.open(SONG_DATA_CACHE)
+    ])
   );
 });
 
 self.addEventListener('fetch', (event) => {
+  // Handle Supabase API requests
+  if (event.request.url.includes('supabase.co')) {
+    event.respondWith(
+      caches.open(SONG_DATA_CACHE).then((cache) => {
+        return fetch(event.request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              cache.put(event.request, response.clone());
+            }
+            return response;
+          })
+          .catch(() => {
+            return cache.match(event.request);
+          });
+      })
+    );
+    return;
+  }
+
+  // Handle other requests
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

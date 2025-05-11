@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { getSongs } from '../lib/supabase';
-import { saveSong, getAllSongs, deleteAllData } from '../lib/db';
+import { getSongs, getSongData as fetchSongData } from '../lib/supabase';
+import { saveSong, getAllSongs, deleteAllData, saveSongData } from '../lib/db';
 
-const songs = ref([]);
+interface Song {
+  id: number;
+  name: string;
+  artist: string;
+  lastUpdated: number;
+}
+
+const songs = ref<Song[]>([]);
 const isOnline = ref(navigator.onLine);
 const isWarmingUp = ref(false);
 const progress = ref(0);
@@ -47,13 +54,21 @@ async function warmUp() {
     // Fetch songs from Supabase
     const fetchedSongs = await getSongs();
     
-    // Save each song to IndexedDB
+    // Save each song to IndexedDB and cache its data
     for (let i = 0; i < fetchedSongs.length; i++) {
       const song = fetchedSongs[i];
       await saveSong({
         ...song,
         lastUpdated: Date.now()
       });
+      
+      // Fetch and cache song data
+      try {
+        const songData = await fetchSongData(song.id);
+        await saveSongData(song.id, songData);
+      } catch (error) {
+        console.warn(`Could not fetch data for song ${song.id}:`, error);
+      }
       
       progress.value = Math.round((i + 1) / fetchedSongs.length * 100);
     }
