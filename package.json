@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "npx vite build",
     "preview": "vite preview",
-    "postbuild": "copy _redirects dist\\_redirects"
+    "postbuild": "cp _redirects dist/_redirects"
   },
   "keywords": [],
   "author": "",
